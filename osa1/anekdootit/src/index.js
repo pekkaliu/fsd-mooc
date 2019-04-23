@@ -29,9 +29,9 @@ const App = (props) => {
     voteCopy[selected] +=1
     setVotes(voteCopy)
   }
-  
-  const { anecdotes } = props
 
+  const { anecdotes } = props
+  
   return (
     <div>
       <h2>Anecdote of the day</h2>
