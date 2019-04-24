@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import personService from './services'
+import './index.css'
 
 // components
 import PhonebookForm from './components/PhonebookForm'
+import Notification from './components/Notification'
 
 const Person = ({person, deletePerson}) => 
   <li>
@@ -22,6 +24,8 @@ const App = () => {
   const [ newName, setNewName ] = useState('')
   const [ newNumber, setNewNumber ] = useState('')
   const [ searchWord, setsearchWord ] = useState('')
+  const [ message, setMessage ] = useState('')
+  const [ messageType, setMessageType ] = useState('')
 
   const hook = () => {
     personService
@@ -52,10 +56,21 @@ const App = () => {
     if(window.confirm(`Haluatko poistaa ${personToDelete.name}`))
       personService
         .deleteRecord(id)
-        .then( data => 
-          setPersons(persons.filter(person => person.id !== id))
+        .then( data => {     
+            showMessage(`poistettiin ${personToDelete.name}`, 'update')
+            setPersons(persons.filter(person => person.id !== id)) 
+            return true
+          }
         )
         
+  }
+
+  const showMessage = (msg, type) => {
+    setMessageType(type)
+    setMessage(msg)
+    setTimeout(() => {
+      setMessage(null)
+    }, 5000)
   }
 
   const handleFormSubmit = (event) => {
@@ -76,21 +91,30 @@ const App = () => {
         const id = persons.filter(p => p.name === newName)[0].id
         personService
           .update(id, newPerson)
-          .then(apiPerson =>
-              setPersons(persons.map(person => 
-                person.id !== apiPerson.id ? person : apiPerson))
-            )
+          .then(apiPerson => {
+              setPersons(persons.map(person => person.id !== apiPerson.id ? person : apiPerson))
+              showMessage(`Yhteystieto ${apiPerson.name} päivitetty`, 'update')
+              return true
+              }
+            ).catch(error => {
+              showMessage(`Henkilö '${newPerson.name}' on jo poistettu palvelimelta`, 'error')
+              setPersons(persons.filter(p => p.id !== id))
+            })
         setNewName('')
         setNewNumber('')
       }
     } else {
       personService
         .create(newPerson)
-        .then(apiPerson => 
+        .then(apiPerson => { 
           setPersons(persons.concat(apiPerson))
+          showMessage(`Lisättiin ${apiPerson.name}`, 'update')
+          return true
+          }
         )
       setNewName('')
       setNewNumber('')
+
     }
   }
 
@@ -103,6 +127,8 @@ const App = () => {
     <div>
       <h2>Puhelinluettelo</h2>
 
+      {message && <Notification message={message} messageType={messageType}/>}
+      
       <Filter searchWord={searchWord} handleSearchChange={handleSearchChange} />
 
       <h3>Lisää uusi</h3>
