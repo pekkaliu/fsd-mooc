@@ -1,24 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import personService from './services'
 
-const Person = ({person}) => <li>{person.name}  {person.number}</li>  
+// components
+import PhonebookForm from './components/PhonebookForm'
 
-const Persons = ({persons}) => 
-  <ul>{persons.map(person => <Person key={person.name} person={person} />)}</ul>
+const Person = ({person, deletePerson}) => 
+  <li>
+    {person.name}  {person.number} {person.id}
+    <button value={person.id} onClick={deletePerson} >poista</button>
+  </li>  
+
+const Persons = ({persons, deletePerson}) => 
+  <ul>{persons.map(person => <Person key={person.name} person={person} deletePerson={deletePerson}/>)}</ul>
 
 const Filter = ({searchWord, handleSearchChange}) => 
   <p>rajaa näytettäviä: <input value={searchWord} onChange={handleSearchChange} /></p>
 
-const PhonebookForm = ({handleFormSubmit, handleNameChange, handleNumberChange, newName, newNumber}) =>
-    <form onSubmit={handleFormSubmit}>
-      <div>
-        nimi: <input value={newName} onChange={handleNameChange} />
-      </div>
-      <div>numero: <input value={newNumber} onChange={handleNumberChange} /></div>
-      <div>
-        <button type="submit">lisää</button>
-      </div>
-    </form>
 
 const App = () => {
   const [ persons, setPersons] = useState([]) 
@@ -27,11 +24,10 @@ const App = () => {
   const [ searchWord, setsearchWord ] = useState('')
 
   const hook = () => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        console.log('promise fulfilled')
-        setPersons(response.data)
+    personService
+      .getAll()
+      .then(persons => {
+        setPersons(persons)
       })
   }
   
@@ -49,6 +45,19 @@ const App = () => {
     setsearchWord(event.target.value)
   }
 
+  const deletePerson = event => {
+    const id = parseInt(event.target.value)
+    const personToDelete = persons.find(p => p.id === id )
+
+    if(window.confirm(`Haluatko poistaa ${personToDelete.name}`))
+      personService
+        .deleteRecord(id)
+        .then( data => 
+          setPersons(persons.filter(person => person.id !== id))
+        )
+        
+  }
+
   const handleFormSubmit = (event) => {
     event.preventDefault()
 
@@ -56,14 +65,30 @@ const App = () => {
     // http://adripofjavascript.com/blog/drips/testing-array-contents-with-array-some.html
     const isObjInArray = (element) => element.name === newName;
 
+    const newPerson = {
+      name: newName,
+      number: newNumber
+    }
+
     if(persons.some(isObjInArray)) {
-      alert(`${newName} on jo luettelossa`)
-    } else {
-      const newPerson = {
-        name: newName,
-        number: newNumber
+      if(window.confirm(`${newName} on jo luettelossa, korvataanko vanha numero uudella?`)){
+        // Etsitään päivitettävän yhteystiedon id
+        const id = persons.filter(p => p.name === newName)[0].id
+        personService
+          .update(id, newPerson)
+          .then(apiPerson =>
+              setPersons(persons.map(person => 
+                person.id !== apiPerson.id ? person : apiPerson))
+            )
+        setNewName('')
+        setNewNumber('')
       }
-      setPersons(persons.concat(newPerson))
+    } else {
+      personService
+        .create(newPerson)
+        .then(apiPerson => 
+          setPersons(persons.concat(apiPerson))
+        )
       setNewName('')
       setNewNumber('')
     }
@@ -87,12 +112,12 @@ const App = () => {
         handleNameChange={handleNameChange} 
         handleNumberChange={handleNumberChange} 
         newName={newName} 
-        newNumbe={newNumber} 
+        newNumber={newNumber} 
       />
 
       <h3>Numerot</h3>
 
-      <Persons persons={personsToShow} />
+      <Persons persons={personsToShow} deletePerson={deletePerson}/>
     </div>
   )
 
