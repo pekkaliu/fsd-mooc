@@ -8,7 +8,7 @@ import Notification from './components/Notification'
 
 const Person = ({person, deletePerson}) => 
   <li>
-    {person.name}  {person.number} {person.id}
+    {person.name}  {person.number}
     <button value={person.id} onClick={deletePerson} >poista</button>
   </li>  
 
